@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  llm-service:
+    build: .
+    image: gpp-llm-service:latest
+    container_name: llm_container
+    ports:
+      - "8000:8000"
+    environment:
+      - API_KEY=gpp-llm-service-secret
+      - TRANSFORMERS_CACHE=/tmp/transformers_cache
+    restart: unless-stopped
+    # Resource limits (good practice for production)
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G

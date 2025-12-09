@@ -1,32 +1,24 @@
-# Stage 1: Builder
-FROM python:3.10-slim as builder
-
-WORKDIR /app
-
-# Install build dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends gcc python3-dev
-
-# Create a virtual environment to isolate dependencies
-RUN python -m venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
-
-COPY requirements.txt .
-# Install dependencies (caches layers if requirements.txt doesn't change)
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Stage 2: Runtime
+# Use a slim Python image
 FROM python:3.10-slim
 
 WORKDIR /app
 
-# Copy the virtual environment from the builder stage
-COPY --from=builder /opt/venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
+# Install gcc (needed for some python libraries)
+RUN apt-get update && apt-get install -y --no-install-recommends gcc && \
+    rm -rf /var/lib/apt/lists/*
 
-# Copy application code
+# Copy requirements first to leverage caching
+COPY requirements.txt .
+
+# CRITICAL: Install dependencies directly with --no-cache-dir to save disk space
+# We point to the CPU-only version of PyTorch explicitly here too just to be safe
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu && \
+    pip install --no-cache-dir -r requirements.txt
+
+# Copy the rest of the application
 COPY ./app ./app
 
-# Create a non-root user for security
+# Create a non-root user for security (Best Practice)
 RUN useradd -m appuser
 USER appuser
 
